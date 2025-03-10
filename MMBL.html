@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMBL</title>
+    <style>
+	@media (max-width: 600px) {
+    body {
+        font-size: 14px; /* Adjust font size for smaller screens */
+    }
+
+    .header h1 {
+        font-size: 32px; /* Smaller header font */
+    }
+
+    table {
+        width: 100%; /* Full width on small screens */
+    }
+}
+
+        body {
+            background-color: #4d148c; /* Roxo FedEx */
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            text-align: center;
+            margin: 20px 0;
+            background-color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0;
+            color: #4d148c;
+        }
+
+        .header .fedex {
+            color: #4d148c;
+        }
+
+        .header .ex {
+            color: #ff6600;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background-color: #f0f0f0;
+            color: #4d148c;
+        }
+
+        th, td {
+            border: 1px solid #b0b0b0;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #d0d0d0;
+            color: #4d148c;
+        }
+
+        tr:nth-child(even) {
+            background-color: #e0e0e0;
+        }
+
+        button {
+            background-color: #ff6600;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff8533;
+        }
+
+        input[type="text"] {
+            background-color: #ffffff;
+            color: #4d148c;
+            border: 1px solid #4d148c;
+            border-radius: 4px;
+            padding: 4px;
+        }
+
+        #csvFile {
+            display: none; /* Oculta o input de arquivo */
+        }
+
+        .duplicado {
+            text-align: center;
+            width: 50px; /* Ajuste para um tamanho pequeno */
+            font-weight: bold; /* Destacar o número */
+            color: #000; /* Preto */
+            background-color: transparent; /* Apenas colorir quando repetido */
+        }
+    </style>
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>Rampa de erro</h1>
+            <button onclick="window.location.href='Index.html'">Menu</button>
+        </div>
+
+        <h1>
+            <span class="fedex">Fed</span><span class="ex">ex</span>
+        </h1>
+    </div>
+
+    <div class="button-container">
+        <button id="limparBtn" aria-label="Limpar todos os campos">Limpar</button>
+	<button id="addRowBtn" aria-label="Adicionar uma nova linha">Adicionar Linha</button>
+
+        <input type="file" id="itemsFile" accept=".csv" style="display:none;">
+        <button id="processItemsBtn">Carregar Itens</button>
+
+        <button id="pontodeentrada">Ponto de entrada</button>
+
+        <button onclick="carregarArquivoXLS()">Pulmão</button>
+
+
+    </div>
+    <div id="ultimaAlteracao" style="text-align: center; margin: 10px 0; font-weight: bold;">
+        Pulmão atualizado em: <span id="dataAlteracao">Não atualizado</span>
+    </div>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Lote</th>
+                <th>Material</th>
+                <th>Rep</th>
+                <th>Pulmão</th>
+                <th>Padrão</th>
+                <th>Sobem</th>
+            </tr>
+        </thead>
+        <tbody id="Bipagem">
+            <tr>
+                <td><input type="text" class="codigoInput"></td>
+                <td><span class="outputB"></span></td>
+                <td><span class="outputC"></span></td>
+                <td><span class="duplicado"></span></td> 
+                <td><span class="outputD"></span></td>
+                <td><span class="outputP"></span></td>
+                <td><span class="outputS"></span></td>
+            </tr>
+        </tbody>
+    </table>
+
+
+        </tbody>
+    </table>
+    
+    <script>
+
+        // Evento para limpar todos os campos da tabela
+        document.getElementById('limparBtn').addEventListener('click', () => {
+            // Seleciona todos os inputs com a classe "codigoInput"
+            const inputs = document.querySelectorAll('.codigoInput');
+            inputs.forEach(input => {
+                input.value = ''; // Limpa o valor do input
+            });
+
+            // Atualiza a tabela
+            atualizarTabela();
+        });
+
+
+        document.getElementById('Bipagem').addEventListener('keydown', event => {
+            if (event.target.classList.contains('codigoInput') && event.key === 'Enter') {
+                event.preventDefault();
+                const nextInput = findNextInput(event.target);
+                if (nextInput) {
+                    nextInput.focus();
+                }
+            }
+        });
+
+        document.getElementById('Bipagem').addEventListener('input', event => {
+    if (event.target.classList.contains('codigoInput')) {
+        buscarInformacao(event.target);
+        verificarDuplicados(); // Revalida duplicados após alteração
+        buscarInformacaoPulmao(event.target)
+    }
+
+});
+
+        document.getElementById('pontodeentrada').addEventListener('click', () => {
+            const fileInput = document.getElementById('itemsFile'); // Referência ao input de arquivo
+            fileInput.click(); // Simula o clique para abrir o seletor de arquivos
+
+            fileInput.onchange = () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('Nenhum arquivo selecionado.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const csvData = e.target.result;
+                    processMainCSV(csvData); // Processa os dados carregados
+                };
+                reader.readAsText(file);
+            };
+        });
+
+        // Evento para carregar arquivo CSV
+        document.getElementById('processItemsBtn').addEventListener('click', () => {
+            const fileInput = document.getElementById('itemsFile');
+            fileInput.click();
+    
+            fileInput.onchange = () => {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+    
+                reader.onload = event => {
+                    const csvData = event.target.result;
+                    const rows = csvData.split('\n').map(row => row.split('|').map(cell => cell.replace(/"/g, '').trim()));
+                    const headers = rows[0];
+                    localStorage.setItem('csvHeaders', JSON.stringify(headers));
+                    localStorage.setItem('csvData', JSON.stringify(rows.slice(1)));
+                };
+    
+                reader.readAsText(file);
+            };
+        });
+       
+        // Evento para adicionar nova linha na tabela
+        document.getElementById('addRowBtn').addEventListener('click', () => {
+    const tbody = document.getElementById('Bipagem');
+    const novaLinha = `
+        <tr>
+            <td><input type="text" class="codigoInput"></td>
+            <td><span class="outputB"></span></td>
+            <td><span class="outputC"></span></td>
+            <td><span class="duplicado"></span></td>
+            <td><span class="outputD"></span></td>
+            <td><span class="outputP"></span></td>
+            <td><span class="outputS"></span></td>
+        </tr>`;
+    tbody.insertAdjacentHTML('beforeend', novaLinha);
+
+    // Chama a verificação de duplicados após a adição da nova linha
+    verificarDuplicados(); // Revalida duplicados após adicionar a linha
+});
+        
+
+        document.addEventListener('DOMContentLoaded', function () {
+        const dataUltimaAlteracao = localStorage.getItem('xlsDataUltimaAlteracao');
+        if (dataUltimaAlteracao) {
+            document.getElementById('dataAlteracao').innerText = dataUltimaAlteracao;
+        }
+    });
+
+        // Função para processar o arquivo do Pulmao
+        
+
+        function carregarArquivoXLS() {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.xls, .xlsx';
+
+        fileInput.onchange = (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                alert('Nenhum arquivo selecionado.');
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+
+                    // Verifica se há planilhas no arquivo
+                    if (workbook.SheetNames.length === 0) {
+                        alert('O arquivo não contém planilhas.');
+                        return;
+                    }
+
+                    // Processa a primeira planilha
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    // Armazena os dados no localStorage
+                    const dataHoraAtual = new Date().toLocaleString(); // Data e hora atual
+                    localStorage.setItem('xlsData', JSON.stringify(jsonData));
+                    localStorage.setItem('xlsDataUltimaAlteracao', dataHoraAtual); // Armazena a data de alteração
+
+                    // Atualiza o cabeçalho com a última data de alteração
+                    document.getElementById('dataAlteracao').innerText = dataHoraAtual;
+
+                    alert('Arquivo XLS carregado com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao processar o arquivo:', error);
+                    alert('Erro ao processar o arquivo. Verifique o console para mais detalhes.');
+                }
+            };
+
+            reader.onerror = (error) => {
+                console.error('Erro ao ler o arquivo:', error);
+                alert('Erro ao ler o arquivo. Verifique o console para mais detalhes.');
+            };
+
+            reader.readAsArrayBuffer(file);
+        };
+
+        fileInput.click();
+    }
+        function buscarPosicao(materialValue, posicaoSpan) {
+    const storedData = JSON.parse(localStorage.getItem('xlsData'));
+
+    if (!storedData) {
+        alert('Nenhum arquivo XLS foi carregado.');
+        return;
+    }
+
+    // Encontrar a posição correspondente ao materialValue
+    const resultado = storedData.find(row => row[0] == materialValue); // Usar == para comparar como números
+
+    if (resultado) {
+        const posicao = resultado[1];
+        posicaoSpan.innerText = posicao; // Atualiza o span específico
+    } else {
+        posicaoSpan.innerText = '*';
+    }
+}
+       
+        // Função principal para processar o código de bipagem
+        function buscarInformacaoPulmao(inputElement) {
+    try {
+        const codigoItem = inputElement.value.trim();
+        const row = inputElement.closest('tr'); // Seleciona a linha atual
+        const materialSpan = row.querySelector('.outputC'); // Seleciona o span dentro da linha
+        const posicaoSpan = row.querySelector('.outputD'); // Seleciona o span dentro da linha
+
+        if (codigoItem.length >= 27) {
+            const materialValue = codigoItem.substring(18, 27);
+            materialSpan.innerText = materialValue;
+
+            // Buscar a posição no arquivo XLS
+            buscarPosicao(materialValue, posicaoSpan); // Passa o span específico para a função
+        } else {
+            materialSpan.innerText = '';
+            posicaoSpan.innerText = '';
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Erro ao buscar a informação.');
+    }
+}
+
+        // Função para verificar duplicados
+        function verificarDuplicados() {
+    const rows = document.querySelectorAll('#Bipagem tr'); // Todas as linhas da tabela
+    const allMaterialValues = Array.from(rows)
+        .map(row => row.querySelector('.outputC')?.innerText.trim())
+        .filter(value => value); // Ignora valores vazios
+
+    // Percorre cada linha e verifica contagem de duplicados
+    rows.forEach(row => {
+        const materialSpan = row.querySelector('.outputC');
+        const duplicadoSpan = row.querySelector('.duplicado');
+
+        if (!materialSpan || !duplicadoSpan) return; // Pula se não encontrar elementos
+
+        const materialValue = materialSpan.innerText.trim(); // Valor atual do material
+
+        // Verifica se o valor não está vazio antes de contar
+        if (materialValue) {
+            const count = allMaterialValues.filter(value => value === materialValue).length; // Conta ocorrências
+
+            // Define o valor no span duplicado e aplica cor apenas se houver repetição
+            duplicadoSpan.innerText = count > 1 ? count : ''; // Exibe número se for repetido
+            duplicadoSpan.style.backgroundColor = count > 1 ? '#00FF00' : ''; // Verde apenas para repetidos
+        } else {
+            // Limpa o conteúdo se o material estiver vazio
+            duplicadoSpan.innerText = '';
+            duplicadoSpan.style.backgroundColor = '';
+        }
+    });
+}
+
+        // Função para atualizar a tabela (exemplo)
+        function atualizarTabela() {
+            const rows = document.querySelectorAll('#Bipagem tr');
+            rows.forEach(row => {
+                // Limpa os spans associados na linha
+                row.querySelectorAll('span').forEach(span => {
+                    span.innerText = ''; // Remove o conteúdo dos spans
+                });
+            });
+        }
+       
+        // Função para processar o arquivo CSV
+        function processCSV() {
+            const fileInput = document.getElementById('itemsFile');
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+    
+            reader.onload = event => {
+                const csvData = event.target.result;
+                const rows = csvData.split('\n').map(row => row.split('|'));
+    
+                // Limpa a tabela antes de adicionar novos dados
+                document.getElementById('tableHeader').innerHTML = '';
+                document.getElementById('tableBody').innerHTML = '';
+    
+                // Preencher cabeçalho
+                const headers = rows[0].map(header => `<th>${header.trim()}</th>`).join('');
+                document.getElementById('tableHeader').innerHTML = headers;
+    
+                // Preencher corpo da tabela
+                rows.slice(1).forEach(row => {
+                    const rowHtml = row.map(cell => `<td>${cell.trim()}</td>`).join('');
+                    document.getElementById('tableBody').insertAdjacentHTML('beforeend', `<tr>${rowHtml}</tr>`);
+                });
+    
+                // Armazenar no localStorage
+                localStorage.setItem('csvHeaders', JSON.stringify(rows[0]));
+                localStorage.setItem('csvData', JSON.stringify(rows.slice(1)));
+            };
+    
+            if (file) {
+                reader.readAsText(file);
+            } else {
+                alert('Por favor, selecione um arquivo CSV.');
+            }
+        }
+    
+        // Função para buscar informação na tabela e exibir resultados
+        function buscarInformacao(inputElement) {
+    try {
+        const codigoItem = inputElement.value.trim();
+        const row = inputElement.closest('tr'); // Busca a linha em que o input está
+        const materialSpan = row.querySelector('.outputC');
+        const resultadoSpan = row.querySelector('.outputP');
+        const loteSpan = row.querySelector('.outputB');
+
+        if (codigoItem.length >= 27) {
+            const materialValue = codigoItem.substring(18, 27);
+            const loteValue = codigoItem.substring(10, 16);
+            materialSpan.innerText = materialValue;
+            loteSpan.innerText = loteValue;
+        } else {
+            materialSpan.innerText = '';
+            resultadoSpan.innerText = '';
+            loteSpan.innerText = '';
+            return;
+        }
+
+        const storedHeaders = JSON.parse(localStorage.getItem('csvHeaders'));
+        const storedData = JSON.parse(localStorage.getItem('csvData'));
+
+        if (!storedHeaders || !storedData) {
+            alert('Nenhuma tabela foi carregada.');
+            return;
+        }
+
+        const headers = storedHeaders.map(header => header.replace(/"/g, '').trim());
+        const codigoIndex = headers.indexOf('Codigo do item');
+        const quantityIndex = headers.indexOf('Quantity in Full Case');
+
+        if (codigoIndex === -1 || quantityIndex === -1) {
+            alert('Arquivo CSV inválido.');
+            return;
+        }
+
+        const resultado = storedData.find(row => {
+            const codigoItemTabela = row[codigoIndex].replace(/"/g, '').trim();
+            return codigoItemTabela === materialSpan.innerText;
+        });
+
+        resultadoSpan.innerText = resultado ? resultado[quantityIndex].trim() : '*';
+    } catch (error) {
+        console.error(error);
+        alert('Erro ao buscar a informação.');
+    }
+}
+    
+        // Configuração inicial dos eventos
+        function findNextInput(currentInput) {
+            const inputs = document.querySelectorAll('.codigoInput');
+            const index = Array.from(inputs).indexOf(currentInput);
+            return inputs[index + 1] || null;
+        }
+
+        
+            
+    </script>
+    
+        
+
+</body>
+</html>
